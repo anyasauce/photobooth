@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vintage Photo Booth</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f3e6;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            text-align: center;
+        }
+
+        .header {
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-family: 'Courier New', monospace;
+            font-style: italic;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .booth {
+            position: relative;
+            width: 640px;
+            height: 480px;
+            margin: 0 auto 20px;
+            border: 10px solid #222;
+            border-radius: 5px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            background-color: #000;
+        }
+
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+            /* Mirror view */
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        button {
+            background-color: #e0c9a6;
+            color: #333;
+            border: 2px solid #333;
+            padding: 12px 24px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.3s;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background-color: #d4b78c;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        #countdown {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 150px;
+            color: white;
+            display: none;
+            z-index: 5;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
+        }
+
+        .flash {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: white;
+            opacity: 0;
+            z-index: 4;
+        }
+
+        #canvas {
+            display: none;
+        }
+
+        .message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 28px;
+            color: white;
+            text-align: center;
+            z-index: 3;
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.7);
+            width: 80%;
+        }
+
+        /* Photo strip design */
+        .strips-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .photo-strip {
+            width: 270px;
+            background-color: white;
+            border: 15px solid #222;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .strip-photo {
+            width: 100%;
+            height: auto;
+            margin-bottom: 10px;
+            border: 1px solid #111;
+        }
+
+        .strip-date {
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            padding: 5px;
+            background-color: white;
+            border-top: 1px solid #111;
+            font-size: 14px;
+        }
+
+        .editing-panel {
+            display: none;
+            background-color: #f8f3e6;
+            border: 2px solid #333;
+            border-radius: 5px;
+            padding: 20px;
+            margin-top: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .panel-section {
+            margin-bottom: 20px;
+        }
+
+        .panel-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .color-options,
+        .filter-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .color-option,
+        .filter-option {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .color-option.selected,
+        .filter-option.selected {
+            border-color: #333;
+            transform: scale(1.1);
+        }
+
+        .color-option:hover,
+        .filter-option:hover {
+            transform: scale(1.1);
+        }
+
+        .filter-option {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: auto;
+            height: auto;
+            padding: 5px 10px;
+            border-radius: 15px;
+            background-color: #333;
+            color: white;
+            font-size: 14px;
+        }
+
+        .photo-strip-actions {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+        }
+
+        .sticker-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .sticker-option {
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            border-radius: 5px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #fff;
+        }
+
+        .sticker-option:hover {
+            border-color: #333;
+            transform: scale(1.1);
+        }
+
+        .sticker-option img {
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        .date-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: #333;
+        }
+
+        input:focus+.slider {
+            box-shadow: 0 0 1px #333;
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(26px);
+        }
+
+        .zoom-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .zoom-button {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #333;
+            color: white;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .zoom-value {
+            width: 50px;
+            text-align: center;
+        }
+
+        .zoom-reset {
+            background-color: #333;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 15px;
+            cursor: pointer;
+        }
+
+        @media (max-width: 700px) {
+            .booth {
+                width: 90vw;
+                height: 68vw;
+            }
+
+            .photo-strip {
+                width: 200px;
+            }
+
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            button {
+                width: 90%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Vintage Photo Booth</h1>
+            <p>Strike a pose and capture the moment!</p>
+        </div>
+
+        <div class="booth">
+            <video id="video" autoplay playsinline></video>
+            <div id="countdown"></div>
+            <div class="message" id="message"></div>
+            <div class="flash"></div>
+        </div>
+
+        <div class="controls">
+            <button id="take-strip">Take Photo Strip (3 photos)</button>
+            <button id="edit-photos" disabled>Edit Photos</button>
+            <button id="download-strip" disabled>Download Strip</button>
+        </div>
+
+        <canvas id="canvas"></canvas>
+
+        <div class="editing-panel" id="editing-panel">
+            <div class="panel-section">
+                <div class="panel-title">Strip Background</div>
+                <div class="color-options">
+                    <div class="color-option selected" style="background-color: #000;" data-color="#000"></div>
+                    <div class="color-option" style="background-color: #fff;" data-color="#fff"></div>
+                    <div class="color-option" style="background-color: #e0c9a6;" data-color="#e0c9a6"></div>
+                    <div class="color-option" style="background-color: #a6e0d9;" data-color="#a6e0d9"></div>
+                    <div class="color-option" style="background-color: #d9f5cd;" data-color="#d9f5cd"></div>
+                    <div class="color-option" style="background-color: #dce0f5;" data-color="#dce0f5"></div>
+                    <div class="color-option" style="background-color: #f5d8e0;" data-color="#f5d8e0"></div>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <div class="panel-title">Filters</div>
+                <div class="filter-options">
+                    <div class="filter-option selected" data-filter="none">No filter</div>
+                    <div class="filter-option" data-filter="grayscale">B&W</div>
+                    <div class="filter-option" data-filter="sepia">Sepia</div>
+                    <div class="filter-option" data-filter="warm">Warm</div>
+                    <div class="filter-option" data-filter="cool">Cool</div>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <div class="panel-title">Stickers</div>
+                <div class="sticker-options">
+                    <div class="sticker-option" data-sticker="none">None</div>
+                    <div class="sticker-option">❤️</div>
+                    <div class="sticker-option">🌟</div>
+                    <div class="sticker-option">🎉</div>
+                </div>
+            </div>
+
+            <div class="date-toggle">
+                <span>Show Date:</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="date-toggle" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="photo-strip-actions">
+                <button id="preview-strip">Preview</button>
+                <button id="save-edits">Save Changes</button>
+            </div>
+        </div>
+
+        <div class="strips-container" id="strips-container"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const countdown = document.getElementById('countdown');
+            const message = document.getElementById('message');
+            const flash = document.querySelector('.flash');
+            const takeStripBtn = document.getElementById('take-strip');
+            const editPhotosBtn = document.getElementById('edit-photos');
+            const downloadStripBtn = document.getElementById('download-strip');
+            const editingPanel = document.getElementById('editing-panel');
+            const stripsContainer = document.getElementById('strips-container');
+            const previewStripBtn = document.getElementById('preview-strip');
+            const saveEditsBtn = document.getElementById('save-edits');
+            const dateToggle = document.getElementById('date-toggle');
+
+            let stream = null;
+            let currentStrip = null;
+            let isCapturing = false;
+
+            // Settings
+            let currentFilter = 'none';
+            let currentBackground = '#000';
+            let currentSticker = 'none';
+            let showDate = true;
+
+            // Set up canvas
+            canvas.width = 640;
+            canvas.height = 480;
+            const context = canvas.getContext('2d');
+
+            // Start video stream
+            async function startCamera() {
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 },
+                            facingMode: 'user'
+                        },
+                        audio: false
+                    });
+
+                    video.srcObject = stream;
+                    takeStripBtn.disabled = false;
+
+                    message.textContent = "Camera ready! Click 'Take Photo Strip' to begin";
+                    setTimeout(() => {
+                        message.textContent = "";
+                    }, 3000);
+                } catch (err) {
+                    console.error('Error accessing camera:', err);
+                    message.textContent = "Could not access camera. Please make sure you have granted camera permissions.";
+                }
+            }
+
+            // Capture photo
+            function capturePhoto() {
+                return new Promise(resolve => {
+                    // Draw the video frame to the canvas
+                    context.save();
+                    context.scale(-1, 1); // Mirror horizontally
+                    context.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
+                    context.restore();
+
+                    // Get image data URL
+                    const photoDataURL = canvas.toDataURL('image/jpeg');
+                    resolve(photoDataURL);
+                });
+            }
+
+            // Create a photo strip from photos
+            function createPhotoStrip(photos) {
+                const stripDiv = document.createElement('div');
+                stripDiv.className = 'photo-strip';
+                stripDiv.style.backgroundColor = currentBackground;
+
+                // Add photos to strip
+                photos.forEach((photo, index) => {
+                    const img = document.createElement('img');
+                    img.src = photo;
+                    img.className = 'strip-photo';
+                    stripDiv.appendChild(img);
+                });
+
+                // Add date at bottom if enabled
+                if (showDate) {
+                    const dateDiv = document.createElement('div');
+                    dateDiv.className = 'strip-date';
+                    const now = new Date();
+                    dateDiv.textContent = now.toLocaleDateString('en-US', {
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric'
+                    });
+                    stripDiv.appendChild(dateDiv);
+                }
+
+                stripsContainer.appendChild(stripDiv);
+                currentStrip = stripDiv;
+                return stripDiv;
+            }
+
+            // Take a photo strip with 3 photos
+            async function takePhotoStrip() {
+                if (isCapturing) return;
+                isCapturing = true;
+
+                const photos = [];
+
+                for (let i = 0; i < 3; i++) {
+                    // Show countdown
+                    countdown.style.display = 'block';
+
+                    // Countdown from 3
+                    for (let j = 3; j > 0; j--) {
+                        countdown.textContent = j;
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+
+                    countdown.textContent = '';
+
+                    // Flash effect
+                    flash.style.opacity = 1;
+                    setTimeout(() => {
+                        flash.style.opacity = 0;
+                    }, 200);
+
+                    const photo = await capturePhoto();
+                    photos.push(photo);
+
+                    if (i < 2) {
+                        countdown.textContent = 'Get ready for next photo...';
+                        await new Promise(resolve => setTimeout(resolve, 1500));
+                    }
+                }
+
+                countdown.style.display = 'none';
+                isCapturing = false;
+
+                // Create the photo strip
+                createPhotoStrip(photos);
+
+                // Enable edit and download buttons
+                editPhotosBtn.disabled = false;
+                downloadStripBtn.disabled = false;
+
+                message.textContent = "Your photo strip is ready! Edit or download it below.";
+                setTimeout(() => {
+                    message.textContent = "";
+                }, 3000);
+            }
+
+            // Show editing panel
+            function showEditingPanel() {
+                editingPanel.style.display = 'block';
+                window.scrollTo({
+                    top: editingPanel.offsetTop,
+                    behavior: 'smooth'
+                });
+            }
+
+            // Apply filter to image
+            function applyFilter(img, filter) {
+                return new Promise((resolve) => {
+                    const tempCanvas = document.createElement('canvas');
+                    const tempCtx = tempCanvas.getContext('2d');
+
+                    tempCanvas.width = img.width;
+                    tempCanvas.height = img.height;
+
+                    // Draw the image onto the canvas
+                    tempCtx.drawImage(img, 0, 0, img.width, img.height);
+
+                    // Apply filter
+                    if (filter !== 'none') {
+                        const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+                        const data = imageData.data;
+
+                        switch (filter) {
+                            case 'grayscale':
+                                for (let i = 0; i < data.length; i += 4) {
+                                    const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                                    data[i] = avg;     // red
+                                    data[i + 1] = avg; // green
+                                    data[i + 2] = avg; // blue
+                                }
+                                break;
+                            case 'sepia':
+                                for (let i = 0; i < data.length; i += 4) {
+                                    const r = data[i];
+                                    const g = data[i + 1];
+                                    const b = data[i + 2];
+
+                                    data[i] = Math.min(255, (r * 0.393) + (g * 0.769) + (b * 0.189));
+                                    data[i + 1] = Math.min(255, (r * 0.349) + (g * 0.686) + (b * 0.168));
+                                    data[i + 2] = Math.min(255, (r * 0.272) + (g * 0.534) + (b * 0.131));
+                                }
+                                break;
+                            case 'warm':
+                                for (let i = 0; i < data.length; i += 4) {
+                                    data[i] = Math.min(255, data[i] * 1.1);     // Increase red
+                                    data[i + 2] = Math.max(0, data[i + 2] * 0.9); // Decrease blue
+                                }
+                                break;
+                            case 'cool':
+                                for (let i = 0; i < data.length; i += 4) {
+                                    data[i] = Math.max(0, data[i] * 0.9);       // Decrease red
+                                    data[i + 2] = Math.min(255, data[i + 2] * 1.1); // Increase blue
+                                }
+                                break;
+                        }
+
+                        tempCtx.putImageData(imageData, 0, 0);
+                    }
+
+                    resolve(tempCanvas.toDataURL('image/jpeg'));
+                });
+            }
+
+            // Update the photo strip with current settings
+            async function updatePhotoStrip() {
+                if (!currentStrip) return;
+
+                // Update background color
+                currentStrip.style.backgroundColor = currentBackground;
+
+                // Update photos with filter
+                const photos = currentStrip.querySelectorAll('.strip-photo');
+                for (let i = 0; i < photos.length; i++) {
+                    const img = new Image();
+                    img.onload = async function () {
+                        const filteredSrc = await applyFilter(img, currentFilter);
+                        photos[i].src = filteredSrc;
+                    };
+                    img.src = photos[i].src;
+                }
+
+                // Update date visibility
+                const dateDiv = currentStrip.querySelector('.strip-date');
+                if (dateDiv) {
+                    if (showDate) {
+                        dateDiv.style.display = 'block';
+                    } else {
+                        dateDiv.style.display = 'none';
+                    }
+                } else if (showDate) {
+                    const newDateDiv = document.createElement('div');
+                    newDateDiv.className = 'strip-date';
+                    const now = new Date();
+                    newDateDiv.textContent = now.toLocaleDateString('en-US', {
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric'
+                    });
+                    currentStrip.appendChild(newDateDiv);
+                }
+            }
+
+            // Download photo strip as an image
+            function downloadPhotoStrip() {
+                if (!currentStrip) return;
+
+                html2canvas(currentStrip).then(canvas => {
+                    const link = document.createElement('a');
+                    link.download = `photo-strip-${new Date().getTime()}.jpg`;
+                    link.href = canvas.toDataURL('image/jpeg', 0.8);
+                    link.click();
+                });
+            }
+
+            // Set up event listeners
+            takeStripBtn.addEventListener('click', takePhotoStrip);
+            editPhotosBtn.addEventListener('click', showEditingPanel);
+            downloadStripBtn.addEventListener('click', downloadPhotoStrip);
+
+            previewStripBtn.addEventListener('click', updatePhotoStrip);
+            saveEditsBtn.addEventListener('click', function () {
+                updatePhotoStrip();
+                editingPanel.style.display = 'none';
+                window.scrollTo({
+                    top: stripsContainer.offsetTop,
+                    behavior: 'smooth'
+                });
+            });
+
+            // Color option selection
+            document.querySelectorAll('.color-option').forEach(option => {
+                option.addEventListener('click', function () {
+                    document.querySelector('.color-option.selected').classList.remove('selected');
+                    this.classList.add('selected');
+                    currentBackground = this.getAttribute('data-color');
+                });
+            });
+
+            // Filter option selection
+            document.querySelectorAll('.filter-option').forEach(option => {
+                option.addEventListener('click', function () {
+                    document.querySelector('.filter-option.selected').classList.remove('selected');
+                    this.classList.add('selected');
+                    currentFilter = this.getAttribute('data-filter');
+                });
+            });
+
+            // Date toggle
+            dateToggle.addEventListener('change', function () {
+                showDate = this.checked;
+            });
+
+            // HTML2Canvas library for downloading
+            function loadHTML2Canvas() {
+                return new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.3.2/html2canvas.min.js';
+                    script.onload = resolve;
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                });
+            }
+
+            // Start the camera and load dependencies
+            startCamera();
+            loadHTML2Canvas();
+        });
+    </script>
+</body>
+
+</html>
